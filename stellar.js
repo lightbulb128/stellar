@@ -1,6 +1,9 @@
 // constants
 WIDTH = 800
 HEIGHT = 600
+if (WIDTH < HEIGHT) {
+  console.log("Warning: WIDTH < HEIGHT")
+}
 PI = 3.14159
 MOUSE_SENSITIVITY = 0.003
 DOT_SIZE = 4
@@ -297,21 +300,20 @@ function generatePoints(colorGenerator, image, imageData, xMargin, yMargin, widt
 }
 
 function sourceSubmitClick() {
-  PADDING = 0.1
-  let xmar = WIDTH * PADDING
-  let ymar = HEIGHT * PADDING
-  let twidth = WIDTH - xmar * 2
-  let theight = HEIGHT - ymar * 2
+  let inherentMargin = 0.05
+  let radius = (HEIGHT * (1 - inherentMargin * 2)) / 2
+
   let image = new Image()
   image.src = document.getElementById("sourceInput").value
   image.crossOrigin = 'anonymous'
   console.log(image.src)
   image.onerror = (e) => {console.log(e)}
   image.onload = function () {
+
     tmpCanvas.width = image.width
     tmpCanvas.height = image.height
     tmpCanvasCtx.drawImage(image, 0, 0)
-    console.log("Drawn image")
+
     let imgData = tmpCanvasCtx.getImageData(0, 0, image.width, image.height).data
     // calculate background color
     let sum = [0, 0, 0]
@@ -323,34 +325,42 @@ function sourceSubmitClick() {
     else {for (let j=0; j<3; j++) sum[j]=0.7*sum[j]}
     for (let j=0; j<3; j++) sum[j] = Math.floor(sum[j])
     backgroundColor = `rgb(${sum[0]}, ${sum[1]}, ${sum[2]})`
+
+    // calculate margin
+    let hypotenuse = Math.sqrt(image.width*image.width + image.height*image.height)
+    let zoom = radius * 2 / hypotenuse
+    let xmar = (WIDTH - image.width * zoom) / 2
+    let ymar = (HEIGHT - image.height * zoom) / 2
+
     let colorGenerator = (x, y) => {
+
       let getColor = (x, y) => {
         let i = 4 * (y * image.width + x)
-        return [imgData[i], imgData[i+1],imgData[i+2], false]
+        return [imgData[i], imgData[i+1], imgData[i+2], false]
       }
+
       let randomSampler = () => {
         let ret = getColor(Math.floor(Math.random() * image.width), Math.floor(Math.random() * image.height))
         ret[3] = true
         return ret
         //return `#ff0000`
       }
-      if (image.width / image.height > WIDTH / HEIGHT) {
-        let margin = (theight - twidth / image.width * image.height) / 2
-        if (y <= ymar + margin || y >= HEIGHT - ymar - margin || x <= xmar || x >= WIDTH - xmar) return randomSampler()
-        else return getColor(Math.floor((x - xmar) / twidth * image.width), Math.floor((y-ymar-margin) / twidth * image.width))
-      } else {
-        let margin = (twidth - theight / image.height * image.width) / 2
-        if (x <= xmar + margin || x >= WIDTH - xmar - margin || y <= ymar || y >= HEIGHT - ymar) return randomSampler()
-        else return getColor(Math.floor((x-xmar-margin) / theight * image.height), Math.floor((y - ymar) / theight * image.height))
-      }
+
+      let outside = x <= xmar || x >= WIDTH - xmar || y <= ymar || y >= HEIGHT - ymar
+      if (outside) return randomSampler()
+      else return getColor(Math.floor((x-xmar) / zoom), Math.floor((y-ymar) / zoom))
+    
     }
-    if (image.width / image.height > WIDTH / HEIGHT) {
-      let margin = (theight - twidth / image.width * image.height) / 2
-      vertices = generatePoints(colorGenerator, image, imgData, xmar, ymar+margin, twidth, twidth / image.width * image.height)
-    } else {
-      let margin = (twidth - theight / image.height * image.width) / 2
-      vertices = generatePoints(colorGenerator, image, imgData, xmar+margin, ymar, theight / image.height * image.width, theight)
-    }
+
+    vertices = generatePoints(colorGenerator, image, imgData, xmar, ymar, image.width * zoom, image.height * zoom)
+
+    // if (image.width / image.height > WIDTH / HEIGHT) {
+    //   let margin = (theight - twidth / image.width * image.height) / 2
+    //   vertices = generatePoints(colorGenerator, image, imgData, xmar, ymar+margin, twidth, twidth / image.width * image.height)
+    // } else {
+    //   let margin = (twidth - theight / image.height * image.width) / 2
+    //   vertices = generatePoints(colorGenerator, image, imgData, xmar+margin, ymar, theight / image.height * image.width, theight)
+    // }
   }
 }
 
