@@ -299,69 +299,76 @@ function generatePoints(colorGenerator, image, imageData, xMargin, yMargin, widt
   }
 }
 
-function sourceSubmitClick() {
+function loadImage(image) {
+
   let inherentMargin = 0.05
   let radius = (HEIGHT * (1 - inherentMargin * 2)) / 2
 
-  let image = new Image()
-  image.src = document.getElementById("sourceInput").value
-  image.crossOrigin = 'anonymous'
-  console.log(image.src)
-  image.onerror = (e) => {console.log(e)}
-  image.onload = function () {
+  tmpCanvas.width = image.width
+  tmpCanvas.height = image.height
+  tmpCanvasCtx.drawImage(image, 0, 0)
 
-    tmpCanvas.width = image.width
-    tmpCanvas.height = image.height
-    tmpCanvasCtx.drawImage(image, 0, 0)
-
-    let imgData = tmpCanvasCtx.getImageData(0, 0, image.width, image.height).data
-    // calculate background color
-    let sum = [0, 0, 0]
-    for (let i=0; i<imgData.length; i+=4) {
-      for (let j=0; j<3; j++) sum[j] += imgData[i+j]
-    }
-    for (let j=0; j<3; j++) sum[j] = sum[j] / imgData.length * 4
-    if (sum[0]+sum[1]+sum[2] < 374) {for (let j=0; j<3; j++) sum[j]=255-(255-sum[j]) * 0.7}
-    else {for (let j=0; j<3; j++) sum[j]=0.7*sum[j]}
-    for (let j=0; j<3; j++) sum[j] = Math.floor(sum[j])
-    backgroundColor = `rgb(${sum[0]}, ${sum[1]}, ${sum[2]})`
-
-    // calculate margin
-    let hypotenuse = Math.sqrt(image.width*image.width + image.height*image.height)
-    let zoom = radius * 2 / hypotenuse
-    let xmar = (WIDTH - image.width * zoom) / 2
-    let ymar = (HEIGHT - image.height * zoom) / 2
-
-    let colorGenerator = (x, y) => {
-
-      let getColor = (x, y) => {
-        let i = 4 * (y * image.width + x)
-        return [imgData[i], imgData[i+1], imgData[i+2], false]
-      }
-
-      let randomSampler = () => {
-        let ret = getColor(Math.floor(Math.random() * image.width), Math.floor(Math.random() * image.height))
-        ret[3] = true
-        return ret
-        //return `#ff0000`
-      }
-
-      let outside = x <= xmar || x >= WIDTH - xmar || y <= ymar || y >= HEIGHT - ymar
-      if (outside) return randomSampler()
-      else return getColor(Math.floor((x-xmar) / zoom), Math.floor((y-ymar) / zoom))
-    
-    }
-
-    vertices = generatePoints(colorGenerator, image, imgData, xmar, ymar, image.width * zoom, image.height * zoom)
-
-    // if (image.width / image.height > WIDTH / HEIGHT) {
-    //   let margin = (theight - twidth / image.width * image.height) / 2
-    //   vertices = generatePoints(colorGenerator, image, imgData, xmar, ymar+margin, twidth, twidth / image.width * image.height)
-    // } else {
-    //   let margin = (twidth - theight / image.height * image.width) / 2
-    //   vertices = generatePoints(colorGenerator, image, imgData, xmar+margin, ymar, theight / image.height * image.width, theight)
-    // }
+  let imgData = tmpCanvasCtx.getImageData(0, 0, image.width, image.height).data
+  // calculate background color
+  let sum = [0, 0, 0]
+  for (let i=0; i<imgData.length; i+=4) {
+    for (let j=0; j<3; j++) sum[j] += imgData[i+j]
   }
+  for (let j=0; j<3; j++) sum[j] = sum[j] / imgData.length * 4
+  if (sum[0]+sum[1]+sum[2] < 374) {for (let j=0; j<3; j++) sum[j]=255-(255-sum[j]) * 0.7}
+  else {for (let j=0; j<3; j++) sum[j]=0.7*sum[j]}
+  for (let j=0; j<3; j++) sum[j] = Math.floor(sum[j])
+  backgroundColor = `rgb(${sum[0]}, ${sum[1]}, ${sum[2]})`
+
+  // calculate margin
+  let hypotenuse = Math.sqrt(image.width*image.width + image.height*image.height)
+  let zoom = radius * 2 / hypotenuse
+  let xmar = (WIDTH - image.width * zoom) / 2
+  let ymar = (HEIGHT - image.height * zoom) / 2
+
+  let colorGenerator = (x, y) => {
+
+    let getColor = (x, y) => {
+      let i = 4 * (y * image.width + x)
+      return [imgData[i], imgData[i+1], imgData[i+2], false]
+    }
+
+    let randomSampler = () => {
+      let ret = getColor(Math.floor(Math.random() * image.width), Math.floor(Math.random() * image.height))
+      ret[3] = true
+      return ret
+      //return `#ff0000`
+    }
+
+    let outside = x <= xmar || x >= WIDTH - xmar || y <= ymar || y >= HEIGHT - ymar
+    if (outside) return randomSampler()
+    else return getColor(Math.floor((x-xmar) / zoom), Math.floor((y-ymar) / zoom))
+  
+  }
+
+  vertices = generatePoints(colorGenerator, image, imgData, xmar, ymar, image.width * zoom, image.height * zoom)
+
+}
+
+function sourceSubmitClick() {
+
+  // let user select a picture from local
+  let fileInput = document.createElement("input")
+  fileInput.type = "file"
+  fileInput.accept = "image/*"
+  fileInput.onchange = function() {
+    let file = fileInput.files[0]
+    let reader = new FileReader()
+    reader.onload = function() {
+      let image = new Image()
+      image.onload = function() {
+        loadImage(image)
+      }
+      image.src = reader.result
+    }
+    reader.readAsDataURL(file)
+  }
+  fileInput.click()
 }
 
 setInterval("update()", 50)
